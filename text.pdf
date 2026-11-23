@@ -1,0 +1,13 @@
+node -p "JSON.stringify(require('@testing-library/react-native/package.json').dependencies, null, 2)"
+
+
+node -p "require.resolve('test-renderer')"
+
+
+npm install --legacy-peer-deps
+
+npx jest js/__tests__/onboarding-test.js --runInBand --no-coverage
+
+
+
+npm ls test-renderer react-test-renderer @testing-library/react-native --depth=0
