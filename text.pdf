@@ -11,3 +11,25 @@ npx jest js/__tests__/onboarding-test.js --runInBand --no-coverage
 
 
 npm ls test-renderer react-test-renderer @testing-library/react-native --depth=0
+
+
+jest.mock('react-native-quick-crypto', () => ({
+  __esModule: true,
+  default: {},
+  createCipheriv: jest.fn(),
+  createDecipheriv: jest.fn(),
+  createHmac: jest.fn(),
+  randomBytes: jest.fn(),
+  Buffer: require('buffer').Buffer,
+}));
+
+
+jest.mock('react-native-quick-base64', () => ({
+  __esModule: true,
+  default: {
+    btoa: jest.fn(),
+    atob: jest.fn(),
+  },
+  btoa: jest.fn(),
+  atob: jest.fn(),
+}));
