@@ -191,6 +191,7 @@ jest.mock('../common/styles/theme', () => ({
   })),
 }));
 
+
 // ITEMS mirror the production onboarding configuration.
 const ITEMS = [
   {
@@ -215,7 +216,6 @@ const ITEMS = [
   },
 ];
 
-// Same translation behavior as the mocked provider.
 const getText = key => key;
 
 const NEXT = getText('next').toUpperCase();
@@ -234,20 +234,25 @@ describe('OnBoardingScreen', () => {
     };
   });
 
-  const renderOnboarding = () =>
-    render(
-      <OnBoardingScreen navigation={navigation} />
+  const renderOnboarding = () => {
+    return render(
+      <OnBoardingScreen navigation={navigation} />,
     );
-
-  const pressNext = async getByText => {
-    await act(async () => {
-      fireEvent.press(getByText(NEXT));
-    });
   };
 
-  const navigateToLastSlide = async getByText => {
+  const pressNext = async () => {
+    const { getByText } = screen;
+
+    await waitFor(() => {
+      expect(getByText(NEXT)).toBeTruthy();
+    });
+
+    fireEvent.press(getByText(NEXT));
+  };
+
+  const navigateToLastSlide = async () => {
     for (let i = 0; i < ITEMS.length - 1; i++) {
-      await pressNext(getByText);
+      await pressNext();
     }
   };
 
@@ -261,11 +266,11 @@ describe('OnBoardingScreen', () => {
     const { getByText } = renderOnboarding();
 
     expect(
-      getByText(getText(ITEMS[0].key))
+      getByText(getText(ITEMS[0].key)),
     ).toBeTruthy();
 
     expect(
-      getByText(getText(ITEMS[0].title))
+      getByText(getText(ITEMS[0].title)),
     ).toBeTruthy();
   });
 
@@ -275,7 +280,7 @@ describe('OnBoardingScreen', () => {
     await waitFor(() => {
       expect(Preference.set).toHaveBeenCalledWith(
         'DEFAULT_UNIT',
-        expect.anything()
+        expect.anything(),
       );
     });
   });
@@ -289,73 +294,90 @@ describe('OnBoardingScreen', () => {
   it('moves to next slide when Next is pressed', async () => {
     const { getByText } = renderOnboarding();
 
-    await pressNext(getByText);
+    fireEvent.press(getByText(NEXT));
 
-    expect(
-      getByText(getText(ITEMS[1].key))
-    ).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        getByText(getText(ITEMS[1].key)),
+      ).toBeTruthy();
+    });
   });
 
   it('moves through all four slides', async () => {
     const { getByText } = renderOnboarding();
 
     for (let i = 1; i < ITEMS.length; i++) {
-      await pressNext(getByText);
+      fireEvent.press(getByText(NEXT));
 
-      expect(
-        getByText(getText(ITEMS[i].key))
-      ).toBeTruthy();
+      await waitFor(() => {
+        expect(
+          getByText(getText(ITEMS[i].key)),
+        ).toBeTruthy();
+      });
     }
   });
 
   it('shows Get Started on final slide', async () => {
     const { getByText } = renderOnboarding();
 
-    await navigateToLastSlide(getByText);
+    for (let i = 0; i < ITEMS.length - 1; i++) {
+      fireEvent.press(getByText(NEXT));
+    }
 
-    expect(getByText(GET_STARTED)).toBeTruthy();
+    await waitFor(() => {
+      expect(getByText(GET_STARTED)).toBeTruthy();
+    });
   });
 
   it('hides Skip on final slide', async () => {
-    const { getByText, queryByText } =
-      renderOnboarding();
+    const { getByText, queryByText } = renderOnboarding();
 
-    await navigateToLastSlide(getByText);
+    for (let i = 0; i < ITEMS.length - 1; i++) {
+      fireEvent.press(getByText(NEXT));
+    }
 
-    expect(queryByText(SKIP)).toBeNull();
+    await waitFor(() => {
+      expect(queryByText(SKIP)).toBeNull();
+    });
   });
 
   it('completes the final slide', async () => {
     const { getByText } = renderOnboarding();
 
-    await navigateToLastSlide(getByText);
+    for (let i = 0; i < ITEMS.length - 1; i++) {
+      fireEvent.press(getByText(NEXT));
+    }
 
-    await act(async () => {
-      fireEvent.press(getByText(GET_STARTED));
+    await waitFor(() => {
+      expect(getByText(GET_STARTED)).toBeTruthy();
     });
 
-    expect(Preference.set).toHaveBeenCalledWith(
-      'FIRST_APP_LAUNCH',
-      'true'
-    );
+    fireEvent.press(getByText(GET_STARTED));
 
-    expect(CommonActions.reset).toHaveBeenCalled();
-    expect(navigation.dispatch).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(Preference.set).toHaveBeenCalledWith(
+        'FIRST_APP_LAUNCH',
+        'true',
+      );
+
+      expect(CommonActions.reset).toHaveBeenCalled();
+      expect(navigation.dispatch).toHaveBeenCalled();
+    });
   });
 
   it('Skip completes onboarding', async () => {
     const { getByText } = renderOnboarding();
 
-    await act(async () => {
-      fireEvent.press(getByText(SKIP));
+    fireEvent.press(getByText(SKIP));
+
+    await waitFor(() => {
+      expect(Preference.set).toHaveBeenCalledWith(
+        'FIRST_APP_LAUNCH',
+        'true',
+      );
+
+      expect(CommonActions.reset).toHaveBeenCalled();
+      expect(navigation.dispatch).toHaveBeenCalled();
     });
-
-    expect(Preference.set).toHaveBeenCalledWith(
-      'FIRST_APP_LAUNCH',
-      'true'
-    );
-
-    expect(CommonActions.reset).toHaveBeenCalled();
-    expect(navigation.dispatch).toHaveBeenCalled();
   });
 });
