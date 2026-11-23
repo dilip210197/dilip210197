@@ -49,3 +49,14 @@ jest.mock('react-native-blob-util', () => ({
     fetch: jest.fn(),
   },
 }));
+
+
+
+jest.mock('../common/nativeHook/GooglePlacesBridge', () => ({
+  __esModule: true,
+  default: {
+    getCurrentPlace: jest.fn(),
+    getPlaceDetails: jest.fn(),
+    searchPlaces: jest.fn(),
+  },
+}));
