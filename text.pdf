@@ -33,3 +33,19 @@ jest.mock('react-native-quick-base64', () => ({
   btoa: jest.fn(),
   atob: jest.fn(),
 }));
+
+jest.mock('react-native-blob-util', () => ({
+  __esModule: true,
+  default: {
+    fs: {
+      dirs: {
+        DocumentDir: '/mock/documents',
+        CacheDir: '/mock/cache',
+      },
+    },
+    config: jest.fn(() => ({
+      fetch: jest.fn(),
+    })),
+    fetch: jest.fn(),
+  },
+}));
