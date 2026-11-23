@@ -84,3 +84,31 @@ it('completes the final slide', async () => {
     screen.getByText(GET_STARTED)
   ).toBeTruthy();
 });
+
+jest.mock('react-native-localize', () => ({
+  getLocales: jest.fn(() => [
+    {
+      languageCode: 'en',
+      countryCode: 'US',
+      languageTag: 'en-US',
+      isRTL: false,
+    },
+  ]),
+  getCountry: jest.fn(() => 'US'),
+  getTimeZone: jest.fn(() => 'UTC'),
+  findBestAvailableLanguage: jest.fn(() => ({
+    languageTag: 'en',
+    isRTL: false,
+  })),
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+}));
+
+jest.mock('../common/language/languageProvider', () => ({
+  __esModule: true,
+  default: class LanguageProvider {
+    getText(key) {
+      return key;
+    }
+  },
+}));
