@@ -60,3 +60,27 @@ jest.mock('../common/nativeHook/GooglePlacesBridge', () => ({
     searchPlaces: jest.fn(),
   },
 }));
+
+const languageProvider = new LanguageProvider();
+
+const NEXT = languageProvider.getText('next').toUpperCase();
+const GET_STARTED = languageProvider.getText('get_started').toUpperCase();
+const SKIP = languageProvider.getText('skip');
+
+const navigateToLastSlide = async () => {
+  for (let i = 0; i < ITEMS.length - 1; i++) {
+    const nextButton = await screen.findByText(NEXT);
+
+    fireEvent.press(nextButton);
+  }
+};
+
+it('completes the final slide', async () => {
+  render(<OnBoardingScreen />);
+
+  await navigateToLastSlide();
+
+  expect(
+    screen.getByText(GET_STARTED)
+  ).toBeTruthy();
+});
