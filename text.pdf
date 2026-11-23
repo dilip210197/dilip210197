@@ -1,90 +1,28 @@
-node -p "JSON.stringify(require('@testing-library/react-native/package.json').dependencies, null, 2)"
 
+import React from 'react';
+import {
+  render,
+  fireEvent,
+  act,
+  waitFor,
+} from '@testing-library/react-native';
 
-node -p "require.resolve('test-renderer')"
+import Preference from 'react-native-preference';
+import { CommonActions } from '@react-navigation/native';
 
+import OnBoardingScreen from '../modules/onboarding/OnBoardingScreen';
 
-npm install --legacy-peer-deps
-
-npx jest js/__tests__/onboarding-test.js --runInBand --no-coverage
-
-
-
-npm ls test-renderer react-test-renderer @testing-library/react-native --depth=0
-
-
-jest.mock('react-native-quick-crypto', () => ({
+// Mock language provider before importing the screen.
+jest.mock('../common/language/languageProvider', () => ({
   __esModule: true,
-  default: {},
-  createCipheriv: jest.fn(),
-  createDecipheriv: jest.fn(),
-  createHmac: jest.fn(),
-  randomBytes: jest.fn(),
-  Buffer: require('buffer').Buffer,
-}));
-
-
-jest.mock('react-native-quick-base64', () => ({
-  __esModule: true,
-  default: {
-    btoa: jest.fn(),
-    atob: jest.fn(),
-  },
-  btoa: jest.fn(),
-  atob: jest.fn(),
-}));
-
-jest.mock('react-native-blob-util', () => ({
-  __esModule: true,
-  default: {
-    fs: {
-      dirs: {
-        DocumentDir: '/mock/documents',
-        CacheDir: '/mock/cache',
-      },
-    },
-    config: jest.fn(() => ({
-      fetch: jest.fn(),
-    })),
-    fetch: jest.fn(),
+  default: class LanguageProvider {
+    getText(key) {
+      return key;
+    }
   },
 }));
 
-
-
-jest.mock('../common/nativeHook/GooglePlacesBridge', () => ({
-  __esModule: true,
-  default: {
-    getCurrentPlace: jest.fn(),
-    getPlaceDetails: jest.fn(),
-    searchPlaces: jest.fn(),
-  },
-}));
-
-const languageProvider = new LanguageProvider();
-
-const NEXT = languageProvider.getText('next').toUpperCase();
-const GET_STARTED = languageProvider.getText('get_started').toUpperCase();
-const SKIP = languageProvider.getText('skip');
-
-const navigateToLastSlide = async () => {
-  for (let i = 0; i < ITEMS.length - 1; i++) {
-    const nextButton = await screen.findByText(NEXT);
-
-    fireEvent.press(nextButton);
-  }
-};
-
-it('completes the final slide', async () => {
-  render(<OnBoardingScreen />);
-
-  await navigateToLastSlide();
-
-  expect(
-    screen.getByText(GET_STARTED)
-  ).toBeTruthy();
-});
-
+// Mock native localization dependency.
 jest.mock('react-native-localize', () => ({
   getLocales: jest.fn(() => [
     {
@@ -104,11 +42,320 @@ jest.mock('react-native-localize', () => ({
   removeEventListener: jest.fn(),
 }));
 
-jest.mock('../common/language/languageProvider', () => ({
+jest.mock('react-native-preference', () => ({
   __esModule: true,
-  default: class LanguageProvider {
-    getText(key) {
-      return key;
+  default: {
+    set: jest.fn(),
+    get: jest.fn(),
+  },
+}));
+
+jest.mock('@react-navigation/native', () => ({
+  CommonActions: {
+    reset: jest.fn(config => ({
+      type: 'RESET',
+      payload: config,
+    })),
+  },
+}));
+
+// Swiper mock that maintains its current index.
+jest.mock('react-native-swiper', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  const Swiper = React.forwardRef((props, ref) => {
+    const [index, setIndex] = React.useState(0);
+
+    React.useImperativeHandle(ref, () => ({
+      scrollBy: jest.fn(amount => {
+        setIndex(previous => {
+          const next = previous + amount;
+
+          if (props.onIndexChanged) {
+            props.onIndexChanged(next);
+          }
+
+          return next;
+        });
+      }),
+    }));
+
+    return (
+      <View testID="mock-swiper">
+        {React.Children.toArray(props.children)[index]}
+      </View>
+    );
+  });
+
+  return {
+    __esModule: true,
+    default: Swiper,
+  };
+});
+
+// Mock icon rendering.
+jest.mock('../common/components/Icon', () => {
+  const { View } = require('react-native');
+
+  return {
+    __esModule: true,
+    default: props => <View testID={props.iconName} />,
+  };
+});
+
+// Mock button while preserving title and press handling.
+jest.mock('../common/components/Button', () => {
+  const React = require('react');
+  const {
+    Text,
+    TouchableOpacity,
+  } = require('react-native');
+
+  return {
+    __esModule: true,
+    default: ({ title, onPress }) => (
+      <TouchableOpacity onPress={onPress}>
+        <Text>{title}</Text>
+      </TouchableOpacity>
+    ),
+  };
+});
+
+// Mock Themeable to avoid native styling dependencies.
+jest.mock('../common/components/Themeable', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  const Themeable = ({ children }) => (
+    <View>{children}</View>
+  );
+
+  Themeable.View = View;
+
+  return {
+    __esModule: true,
+    default: Themeable,
+  };
+});
+
+// Mock the configuration used by onboarding.
+jest.mock('../common/network/killSwitchCache', () => ({
+  __esModule: true,
+  default: class KillSwitchConfig {
+    getMobileProperties() {
+      return {
+        binSetting: {
+          isEnabled: false,
+        },
+      };
     }
   },
 }));
+
+// Keep the screen constants consistent with the component.
+jest.mock('../common/constants/screenConstants', () => ({
+  __esModule: true,
+  default: {
+    HOME_SCREEN: 'HOME_SCREEN',
+    BIN_ENTRY_SCREEN: 'BIN_ENTRY_SCREEN',
+  },
+}));
+
+// Mock the icon constants used by ITEMS.
+jest.mock('../common/constants/iconConstants', () => ({
+  __esModule: true,
+  default: {
+    ON_BOARDING_GRAPHIC_1: 'graphic_1',
+    ON_BOARDING_GRAPHIC_2: 'graphic_2',
+    ON_BOARDING_GRAPHIC_3: 'graphic_3',
+    ON_BOARDING_GRAPHIC_4: 'graphic_4',
+  },
+}));
+
+jest.mock('../common/constants/globalConstants', () => ({
+  ANDROID_PADDING_BOTTOM: 0,
+}));
+
+jest.mock('../common/utils/initialStateCategories', () => ({
+  initialStateCategory: {
+    DEFAULT_UNIT: 'metric',
+  },
+}));
+
+jest.mock('../common/styles/theme', () => ({
+  getTheme: jest.fn(() => ({
+    splashScreenStyle: {},
+    DEFAULT_SPACE_TEN: 10,
+    binEntryBackgroundColor: '#ffffff',
+  })),
+}));
+
+// ITEMS mirror the production onboarding configuration.
+const ITEMS = [
+  {
+    index: 1,
+    key: 'welcome_screen',
+    title: 'welcome_screen_text',
+  },
+  {
+    index: 2,
+    key: 'explore_screen',
+    title: 'explore_screen_text',
+  },
+  {
+    index: 3,
+    key: 'find_screen',
+    title: 'find_screen_text',
+  },
+  {
+    index: 4,
+    key: 'learn_screen',
+    title: 'learn_screen_text',
+  },
+];
+
+// Same translation behavior as the mocked provider.
+const getText = key => key;
+
+const NEXT = getText('next').toUpperCase();
+const GET_STARTED = getText('get_started').toUpperCase();
+const SKIP = getText('skip');
+
+describe('OnBoardingScreen', () => {
+  let navigation;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    navigation = {
+      dispatch: jest.fn(),
+      navigate: jest.fn(),
+    };
+  });
+
+  const renderOnboarding = () =>
+    render(
+      <OnBoardingScreen navigation={navigation} />
+    );
+
+  const pressNext = async getByText => {
+    await act(async () => {
+      fireEvent.press(getByText(NEXT));
+    });
+  };
+
+  const navigateToLastSlide = async getByText => {
+    for (let i = 0; i < ITEMS.length - 1; i++) {
+      await pressNext(getByText);
+    }
+  };
+
+  it('renders the onboarding screen', () => {
+    const { getByTestId } = renderOnboarding();
+
+    expect(getByTestId('mock-swiper')).toBeTruthy();
+  });
+
+  it('renders the first onboarding slide', () => {
+    const { getByText } = renderOnboarding();
+
+    expect(
+      getByText(getText(ITEMS[0].key))
+    ).toBeTruthy();
+
+    expect(
+      getByText(getText(ITEMS[0].title))
+    ).toBeTruthy();
+  });
+
+  it('saves default unit on mount', async () => {
+    renderOnboarding();
+
+    await waitFor(() => {
+      expect(Preference.set).toHaveBeenCalledWith(
+        'DEFAULT_UNIT',
+        expect.anything()
+      );
+    });
+  });
+
+  it('shows Next button initially', () => {
+    const { getByText } = renderOnboarding();
+
+    expect(getByText(NEXT)).toBeTruthy();
+  });
+
+  it('moves to next slide when Next is pressed', async () => {
+    const { getByText } = renderOnboarding();
+
+    await pressNext(getByText);
+
+    expect(
+      getByText(getText(ITEMS[1].key))
+    ).toBeTruthy();
+  });
+
+  it('moves through all four slides', async () => {
+    const { getByText } = renderOnboarding();
+
+    for (let i = 1; i < ITEMS.length; i++) {
+      await pressNext(getByText);
+
+      expect(
+        getByText(getText(ITEMS[i].key))
+      ).toBeTruthy();
+    }
+  });
+
+  it('shows Get Started on final slide', async () => {
+    const { getByText } = renderOnboarding();
+
+    await navigateToLastSlide(getByText);
+
+    expect(getByText(GET_STARTED)).toBeTruthy();
+  });
+
+  it('hides Skip on final slide', async () => {
+    const { getByText, queryByText } =
+      renderOnboarding();
+
+    await navigateToLastSlide(getByText);
+
+    expect(queryByText(SKIP)).toBeNull();
+  });
+
+  it('completes the final slide', async () => {
+    const { getByText } = renderOnboarding();
+
+    await navigateToLastSlide(getByText);
+
+    await act(async () => {
+      fireEvent.press(getByText(GET_STARTED));
+    });
+
+    expect(Preference.set).toHaveBeenCalledWith(
+      'FIRST_APP_LAUNCH',
+      'true'
+    );
+
+    expect(CommonActions.reset).toHaveBeenCalled();
+    expect(navigation.dispatch).toHaveBeenCalled();
+  });
+
+  it('Skip completes onboarding', async () => {
+    const { getByText } = renderOnboarding();
+
+    await act(async () => {
+      fireEvent.press(getByText(SKIP));
+    });
+
+    expect(Preference.set).toHaveBeenCalledWith(
+      'FIRST_APP_LAUNCH',
+      'true'
+    );
+
+    expect(CommonActions.reset).toHaveBeenCalled();
+    expect(navigation.dispatch).toHaveBeenCalled();
+  });
+});
