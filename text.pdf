@@ -1,32 +1,17 @@
-// Mock onboarding configuration.
-jest.mock('../common/network/killSwitchCache', () => {
-  const moduleProperties = {
-    binSetting: {
-      isEnabled: false,
-    },
-  };
+// Verify onboarding completion.
+const verifyOnboardingCompletion = async () => {
+  await waitFor(() => {
+    expect(Preference.set).toHaveBeenCalledWith(
+      'firstAppLaunch',
+      'true',
+    );
 
-  class KillSwitchConfig {
-    constructor() {
-      this.moduleProperties = moduleProperties;
-    }
+    expect(
+      CommonActions.reset,
+    ).toHaveBeenCalled();
 
-    getMobileProperties() {
-      return moduleProperties;
-    }
-
-    static getMobileProperties() {
-      return moduleProperties;
-    }
-  }
-
-  KillSwitchConfig.moduleProperties = moduleProperties;
-
-  return {
-    __esModule: true,
-    default: KillSwitchConfig,
-    KillSwitch: KillSwitchConfig,
-    KillSwitchConfig: KillSwitchConfig,
-    moduleProperties: moduleProperties,
-  };
-});
+    expect(
+      navigation.dispatch,
+    ).toHaveBeenCalled();
+  });
+};
