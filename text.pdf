@@ -1,17 +1,1 @@
-// Verify onboarding completion.
-const verifyOnboardingCompletion = async () => {
-  await waitFor(() => {
-    expect(Preference.set).toHaveBeenCalledWith(
-      'firstAppLaunch',
-      'true',
-    );
-
-    expect(
-      CommonActions.reset,
-    ).toHaveBeenCalled();
-
-    expect(
-      navigation.dispatch,
-    ).toHaveBeenCalled();
-  });
-};
+yarn test --coverage --coverageProvider=v8 --collectCoverageFrom='js/**/*.{js,jsx,ts,tsx}' --collectCoverageFrom='!js/**/__tests__/**' --collectCoverageFrom='!js/**/*.test.*' --collectCoverageFrom='!js/**/*-test.*' --collectCoverageFrom='!js/**/*.spec.*' --collectCoverageFrom='!js/**/*.d.ts'
